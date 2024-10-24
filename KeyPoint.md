@@ -676,7 +676,7 @@ ViT 的提出开创了视觉 Transformer 的研究热潮，推动了计算机视
 
 # MAE
 
-首先Transformer是一个纯基于注意力机制的编码器和解码器，BERT使用了一个Transformer编码器，拓展到更一般的NLP任务上，使用了完形填空的自监督训练机制。ViT模型可以认为是将Transformer用到CV上，它将每个图片割成很多16×16的小方块，放入Transformer做训练，而现在讲的MAE可以认为是BERT的一个CV版本，同时基于ViT这篇文章，但是MAE将整个训练扩展到没有标号的数据上面，和BERT一样，通过完型填空的自监督学习来获取图片的一个理解。
+首先Transformer是一个纯基于注意力机制的编码器和解码器，BERT使用了一个Transformer编码器，拓展到更一般的NLP任务上，使用了完形填空的自监督训练机制。ViT模型可以认为是将Transformer（编码器部分）用到CV上，它将每个图片割成很多16×16的小方块，放入Transformer做训练，而现在讲的MAE可以认为是BERT的一个CV版本，同时基于ViT这篇文章，但是MAE将整个训练扩展到没有标号的数据上面，和BERT一样，通过完型填空的自监督学习来获取图片的一个理解。
 
 ![image-20241023135743562](./KeyPoint.assets/image-20241023135743562.png)
 
@@ -684,7 +684,7 @@ ViT 的提出开创了视觉 Transformer 的研究热潮，推动了计算机视
 
 ### 1. **主要贡献**
 
-MAE引入了一种新的掩码图像建模（Masked Image Modeling, MIM）方法，其目标是让模型在自监督训练阶段恢复丢失的图像块。这种方法有助于模型在训练过程中有效提取图像的全局结构。
+MAE引入了一种新的掩码图像建模（Masked Image Modeling, MIM）方法，其目标是**让模型在自监督训练阶段恢复丢失的图像块**。这种方法有助于模型在训练过程中有效提取图像的全局结构。
 
 ### 2. **MAE的架构与原理**
 
@@ -694,7 +694,7 @@ MAE主要由两个模块组成：编码器（Encoder）和解码器（Decoder）
 
 1. 输入图像首先被划分为固定大小的图像块（patches），每个patch可以被看作是一个小的图像片段。
 2. 随机选择一定比例（例如75%）的图像块进行掩码（即丢弃），只有剩下的未被掩码的图像块被输入到编码器。
-3. 编码器使用一个Vision Transformer（ViT）模型，仅处理剩余的未掩码图像块。这大大减少了计算量，因为只处理了部分图像。
+3. **编码器使用一个Vision Transformer（ViT）模型，仅处理剩余的未掩码图像块**。这大大减少了计算量，因为只处理了部分图像。
 
 #### **解码器（Decoder）**
 
@@ -716,6 +716,105 @@ MAE主要由两个模块组成：编码器（Encoder）和解码器（Decoder）
 ### 5. **结论**
 
 MAE展示了一种高效且可扩展的自监督学习框架，尤其适合视觉任务。它通过掩码和重建的简单策略，成功地推动了自监督学习在图像领域的发展，并显示了在大型数据集和深层次模型上的强大性能。
+
+------
+
+# **Swin Transformer: Hierarchical Vision Transformer using Shifted Windows**
+
+![image-20241024153856489](./KeyPoint.assets/image-20241024153856489.png)
+
+![image-20241024153942310](./KeyPoint.assets/image-20241024153942310.png)
+
+![image-20241024154020395](./KeyPoint.assets/image-20241024154020395.png)
+
+### 主要贡献
+
+Swin Transformer 提出了以下几个关键创新点：
+
+1. **层次化结构 (Hierarchical Structure)**
+   Swin Transformer 构建了一个层次化的特征表示，从局部到全局逐步建模。与 CNN 类似，Swin Transformer 通过逐步减小特征图尺寸，并同时增大通道数量，以捕获不同尺度的信息。这使得 Swin Transformer 可以像卷积神经网络（CNN）那样构建多层特征。
+2. **基于窗口的自注意力 (Window-based Self-Attention)**
+   Swin Transformer 不像标准 Transformer 那样在整个图像上进行自注意力计算，而是将输入图像划分为多个不重叠的窗口，在每个窗口内计算自注意力。这显著减少了计算开销，并且适用于处理更大尺寸的图像。
+3. **Shifted Window 机制**
+   为了弥补窗口划分带来的局部性限制，Swin Transformer 引入了窗口的**平移（shift）机制**。在相邻的 Transformer 层中，窗口会发生一定的平移，这样可以实现跨窗口的信息交流。这样模型不仅能在局部窗口中捕获细节信息，还能通过不同窗口间的信息交互捕捉到全局上下文。
+4. **计算效率与灵活性**
+   Swin Transformer 通过局部窗口注意力计算，显著降低了计算复杂度，使其能够应用于大分辨率图像。复杂度从标准 Transformer 的 $O(N^2)$（其中 N 为输入图像的像素数）降到了 $O(N)$。这一改进使 Swin Transformer 能够在各种计算资源有限的场景中高效运行。
+
+### Swin Transformer 的结构
+
+模型分为四个阶段，每个阶段都会对输入特征进行下采样（类似 CNN 中的池化操作），并通过 Transformer 块进行特征提取。具体流程如下：
+
+1. **Patch Partition**
+   将输入图像划分为小的非重叠块（patches），然后将这些 patch 展开成 token 序列。初始的 patch 大小一般是 $4 \times 4$。
+2. **Linear Embedding**
+   通过线性投影将每个 patch 的特征嵌入到一个高维空间中，形成初始的 token 表示。
+3. **Swin Transformer Block**
+   主要由两个模块组成：**窗口内自注意力（Window-based Multi-head Self-Attention，W-MSA）** 和 **移动窗口内自注意力（Shifted Window-based Multi-head Self-Attention，SW-MSA）**。这些模块可以在局部和全局范围内捕获信息。
+4. **Patch Merging**
+   类似于 CNN 的池化操作，Swin Transformer 在每个阶段结束时，通过下采样（patch merging）来减小特征图尺寸，并增大通道数。
+
+### 实验结果
+
+Swin Transformer 在多个视觉任务上都取得了很好的性能，包括：
+
+- **ImageNet 图像分类**：在 Regular ImageNet-1K上，Swin Transformer 达到了与现有 CNN 模型相媲美甚至更好的性能。而使用ImageNet-22K pre-trained models效果就更明显，更大的Swin-L模型则达到了87.3%的top-1准确率，比Swin-B模型高出了0.9%。
+- **COCO 目标检测**：Swin Transformer 在检测任务上也表现优异，使用Swin-T替换掉一系列表现很好的模型的主干网络R-50，效果都有了明显的提升，即使在Cascade Mask R-CNN与其他主干网络比较都取到了显著的提升。总之无论是充当主干网络的表现还是在系统级别的比较本模型都相当出色。
+- **ADE20K 语义分割**：在这一密集预测任务中，Swin Transformer 也展现了出色的分割精度，超越了SOTA。
+- 总之，它的性能在COCO数据集上以+2.7的边界框平均精度（box AP）和+2.6的掩码平均精度（mask AP），以及在ADE20K数据集上以+3.2的平均交并比（mIoU）大幅度超越了之前最先进的模型，这展示了基于Transformer的模型作为视觉骨干网络的潜力。
+
+### 优点总结
+
+- **局部和全局的特征捕获**：通过窗口机制，Swin Transformer 能够高效地捕获局部细节，而 shift 机制则帮助其获得全局信息。
+- **计算效率高**：窗口注意力机制大幅减少了计算复杂度，使其能够处理更高分辨率的图像。
+- **可扩展性强**：Swin Transformer 的层次化结构与 CNN 类似，能够适应各种视觉任务，包括分类、检测和分割。
+
+### 总结
+
+Swin Transformer 是一种结合了 Transformer 和 CNN 的优势的视觉模型，突破了标准 Vision Transformer 在高分辨率图像上应用的瓶颈，通过窗口机制提高了计算效率，同时不牺牲模型的表达能力，适用于多种视觉任务，并且在图像分类、检测和分割任务上都取得了领先的效果。
+
+------
+
+# DETR:End-to-End Object Detection with Transformers
+
+DETR（DEtection TRansformer）是Facebook AI Research于2020年提出的一个革命性目标检测方法，它将**Transformer**引入到目标检测任务中，并且实现了一个**端到端**的检测流程，打破了传统检测方法依赖的区域提议网络和预定义锚框（anchor box）的复杂结构。
+
+### DETR的关键概念：
+
+1. **基于Transformer的目标检测**： DETR首次将Transformer架构应用于目标检测。Transformer最初是为自然语言处理设计的，通过**自注意力机制**（self-attention）能够建模图像中对象之间的全局关系，不需要传统的锚框和区域提议网络（RPN）。这种机制使得DETR能够有效处理目标之间复杂的相互关系，尤其是在处理密集或遮挡情况时。
+2. **端到端的检测流程**： DETR最大的特点就是它是完全**端到端**的目标检测器，不需要像Faster R-CNN等传统方法那样依赖复杂的后处理步骤（例如非极大值抑制，NMS）。DETR直接从特征图中预测目标，输出类别标签和边界框，显著简化了训练和推理过程。
+3. **基于查询的检测**： DETR引入了**对象查询**（object queries），这些查询是经过训练的嵌入向量，Transformer通过它们来预测图像中的对象。每个查询与图像的不同部分进行关联，从而输出一个对象的边界框和类别。这些对象查询相当于“对象假设”，并且是并行处理的，从而提高检测效率。
+4. **集合预测损失**： DETR将目标检测视为**集合预测问题**，它输出一个固定数量的对象查询，并通过**匈牙利匹配算法**（Hungarian Algorithm）计算模型预测与真实标注的匹配损失。这种机制帮助DETR避免了像NMS这种后处理步骤，直接优化检测的精度。DETR采用了**Bipartite Matching Loss**（双边匹配损失），其核心是将预测的对象与真实标注对象进行一一对应的匹配。这个匹配过程通过匈牙利算法完成，确保每个预测只与一个真实对象匹配。此外，DETR的边界框损失采用了**L1损失**和**广义IoU（GIoU）损失**的组合，使得其边界框回归更加准确。
+
+![image-20241024170715128](./KeyPoint.assets/image-20241024170715128.png)
+
+![image-20241024170910278](./KeyPoint.assets/image-20241024170910278.png)
+
+![image-20241024170954535](./KeyPoint.assets/image-20241024170954535.png)
+
+### 模型架构：
+
+DETR的架构主要包括两部分：
+
+- **卷积神经网络（CNN）骨干**：通常使用ResNet来提取图像特征。
+- **Transformer编码器-解码器**：编码器处理来自CNN的图像特征，解码器则基于对象查询生成预测的边界框和类别。
+  - 编码器的任务是处理图像的全局上下文，允许每个像素特征与其他像素进行交互，以捕捉整个图像中的对象关系。
+  - 解码器的关键创新在于对象查询，它们作为检测头，帮助模型定位和识别图像中的目标。通过**交叉注意力机制（cross-attention）**，解码器能够从编码器输出的全局图像特征中提取相关信息，完成检测任务。
+
+### 实验结果：
+
+DETR在COCO数据集上展现了**42 AP**（平均精度）的结果，使用ResNet-50骨干网络。虽然其性能与传统目标检测器相当，但DETR的最大优势在于其结构简单、无需手动设计大量超参数。然而，DETR的收敛速度较慢，需要较长的训练时间才能达到最佳性能。
+
+### 改进与变体：
+
+为了加速DETR的收敛，后续提出了**Deformable DETR**，它通过引入**可变形注意力**（deformable attention），使得模型能够集中关注图像中更相关的区域，从而加速训练并提升性能。
+
+### 应用领域：
+
+除了目标检测，DETR还被应用于**全景分割**（Panoptic Segmentation）和**人-物交互检测**等任务，证明了Transformer架构在计算机视觉任务中的强大通用性和灵活性。
+
+### 总结：
+
+DETR通过Transformer的引入，大大简化了目标检测的流程，去除了许多传统检测器中复杂的预处理和后处理步骤。这种简洁而高效的设计使其成为目标检测领域的重要创新，并为后续研究提供了新的思路。
 
 ------
 
