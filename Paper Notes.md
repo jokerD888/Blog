@@ -37,7 +37,8 @@ https://arxiv.org/pdf/2103.00020
 ### CLIP：跨模态对比学习的革命性突破
 
 CLIP（Contrastive Language-Image Pretraining）是OpenAI提出的一种新型的跨模态学习方法，使用400million的图像文本对进行训练，方法很简单，效果也很好，例如在不使用ImageNet训练的128万个训练样本的条件下，能够和全样本训练的ResNet-50打成平手。CLIP通过在大规模的图像-文本对数据集上进行训练，能够学习到通用的视觉-语言表示，使得模型在各种下游任务中都能取得优异的表现，无论是图像分类、图像生成，还是文本生成等。
-<img src="./Paper Notes.assets/image-20241129212304699.png" alt="image-20241129212304699.png" style="zoom:50%;" />
+<img src="./Paper Notes.assets/image-20241129212304699.png" alt="image-20241129212304699.png"  />
+
 #### 1. CLIP的核心思想
 
 CLIP的核心思想是通过对比学习（Contrastive Learning）来学习跨模态（视觉与语言）的联合表示。与传统方法不同，**CLIP并没有针对特定任务进行训练**，而是通过大规模的图像-文本对（400million）进行预训练。每对图像和文本都构成了一个正样本，而其他不匹配的图像-文本对则是负样本。通过最大化正确匹配的图像-文本对的相似度，同时最小化不匹配对的相似度，CLIP学会了将图像和文本映射到同一个潜在空间。
@@ -168,3 +169,28 @@ SimCLR的主要贡献包括：
 
 ------
 
+## 基于CLIP的改进工作
+
+### LSeg:LANGUAGE-DRIVEN SEMANTIC SEGMENTATION
+
+https://arxiv.org/pdf/2201.03546
+
+<img src="./Paper%20Notes.assets/image-20241215155104135.png" alt="image-20241215155104135" />
+
+LSeg如果不看上面的部分，那就是一个普通的分割模型。上面的部分中的文本编码器使用的就是CLIP中的文本编码器，并且在训练时也是冻结的。使用了CLIP后本质上都是在算图像特征和文本特征之间的相似性，并不是真正的再做分类。虽然LSeg使用了CLIP的预训练参数，但是其目标函数不是对比学习，也不是无监督学习的框架，并没有把文本当做一个监督信号来训练，实际上还是依赖手工标注的Segametataion mask。
+
+### GroupViT: Semantic Segmentation Emerges from Text Supervision
+
+https://arxiv.org/pdf/2202.11094
+
+上篇论文还是要依赖手工标注的maks，所有如何能摆脱手工标注，使用文本来做监督信号，从而达到无监督训练，这个才是大家想要的。
+
+首先什么是Grouping，在这里类似于，如果你有一些聚类的中心点，然后我从这个点开始发散，把附近周围相似的点逐渐扩充为一个group，那这个group就相当于segemetataion mask，是一种自下而上的方式。
+
+<img src="./Paper%20Notes.assets/image-20241215160651357.png" alt="image-20241215160651357" />
+
+上图中GroupVit的贡献就是在一个已有的Vit的框架中，加入了Grouping Block以及可学习的group tokens。对于左边的图像编码器就是一个12层的Vision Transformer。图像编码器的输入则有两个部分，一部分是来自于原始图像的patch embedding，而一部分来自本文提出的group tokens（最开始设置有64个，表示64个聚类中心，把哪些相似的像素点归结到这64个cluster中）。自下而上的第一个Transformer Layers是6层，经过这6层学习后，可能学的比较好了，就经过Grouping Block把图像的patch embedding 直接assign到64个group token上，相当于做了一次聚类分配，所以这一步操作后就剩下64个输入了。随后又加了8个group tokens，希望通过进一步学习把64个segment token映射到这8个group tokens上。
+
+虚线的右边是Grouping Block，首先算一下两部分输入的相似度矩阵，然后利用这个相似度矩阵，帮助原来的image token做聚类中心的分类。因为聚类中心分配的过程是不可导的，所以这里使用了gumbel softmax从而使得这个过程可导，整个模型就可以进行端到端的训练了。
+
+GroupVit和CLIP都是通过图像文本对，计算对比学习的loss（目标函数也和CLIP一样），从而训练整个网络。原来做CLIP的时候是图像一个特征，文本一个特征，很容易做对比学习的loss。但是现在图像做了group token和group mergring的操作，得到的是一个序列长度为8的特征序列（8×184），所以这里做了一个Avg Pooling。总体网络还是比较简单的，没有加什么复杂的方法。
